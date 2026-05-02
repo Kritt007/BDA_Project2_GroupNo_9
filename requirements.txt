@@ -2,7 +2,7 @@ pdfplumber
 pytesseract
 pdf2image
 langchain
-langchain-community<0.3.28
+langchain-community
 langchain-huggingface
 faiss-cpu
 sentence-transformers
@@ -13,5 +13,5 @@ gradio
 torch
 torchvision
 streamlit
-langchain-google-genai>=1.0.3
-google-generativeai
+langchain-google-genai>=2.0.0
+google-generativeai>=0.8.0

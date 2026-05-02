@@ -34,7 +34,7 @@ def initialize_rag_system():
         st.error(f"ไม่พบไฟล์ '{file_path}' กรุณาตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์เดียวกันกับโค้ด")
         st.stop()
 
-    # โหลดเอกสาร [cite: 1]
+    # โหลดเอกสาร
     loader = TextLoader(file_path, encoding="utf-8")
     docs = loader.load()
     
@@ -48,7 +48,8 @@ def initialize_rag_system():
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     
     # ตั้งค่าตัวโมเดล AI (Gemini 1.5 Flash - เร็วและแม่นยำ)
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+    # --- แก้ไขย่อหน้าบรรทัดนี้ให้ตรงกับบรรทัดอื่นแล้ว ---
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
     
     system_prompt = (
         "คุณคือเจ้าหน้าที่ผู้เชี่ยวชาญด้านกฎระเบียบทุนวิจัยเพื่อพัฒนาการเรียนรู้ มหาวิทยาลัยแม่ฟ้าหลวง "
@@ -104,8 +105,8 @@ if user_query := st.chat_input("พิมพ์คำถามของคุณ
 # 5. แถบด้านข้างสำหรับข้อมูลสรุป (Sidebar Information)
 with st.sidebar:
     st.header("📌 สรุปเงื่อนไขสำคัญ")
-    st.write("- **วงเงินทุน:** ไม่เกิน 50,000 บาทต่อโครงการ [cite: 7, 8]")
-    st.write("- **ระยะเวลาดำเนินการ:** ไม่เกิน 12 เดือน [cite: 6]")
+    st.write("- **วงเงินทุน:** ไม่เกิน 50,000 บาทต่อโครงการ")
+    st.write("- **ระยะเวลาดำเนินการ:** ไม่เกิน 12 เดือน")
     st.write("- **การจ่ายเงิน:** แบ่งจ่าย 3 งวด (50% / 30% / 20%) ")
     st.divider()
     if st.button("🗑️ ล้างประวัติการสนทนา"):

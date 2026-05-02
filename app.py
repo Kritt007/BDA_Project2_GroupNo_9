@@ -49,7 +49,7 @@ def initialize_rag_system():
     
     # ตั้งค่าตัวโมเดล AI (Gemini 1.5 Flash - เร็วและแม่นยำ)
     # --- แก้ไขย่อหน้าบรรทัดนี้ให้ตรงกับบรรทัดอื่นแล้ว ---
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.2, max_output_tokens=512)
     
     system_prompt = (
         "คุณคือเจ้าหน้าที่ผู้เชี่ยวชาญด้านกฎระเบียบทุนวิจัยเพื่อพัฒนาการเรียนรู้ มหาวิทยาลัยแม่ฟ้าหลวง "

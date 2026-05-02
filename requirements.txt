@@ -1,4 +1,6 @@
-streamlit
+pdfplumber
+pytesseract
+pdf2image
 langchain
 langchain-community<0.3.28
 langchain-huggingface
@@ -7,4 +9,8 @@ sentence-transformers
 transformers
 accelerate
 bitsandbytes
+gradio
 torch
+torchvision
+streamlit
+langchain-google-genai

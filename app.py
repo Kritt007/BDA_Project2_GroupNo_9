@@ -23,7 +23,7 @@ st.markdown("ระบบนี้ใช้ AI ช่วยค้นหาคำ
 # แนะนำให้ตั้งค่าใน Streamlit Secrets หรือ Environment Variable เพื่อความปลอดภัย
 if "GOOGLE_API_KEY" not in st.session_state:
     # คุณสามารถใส่ Key ตรงๆ ได้ที่นี่เพื่อทดสอบ (แต่ไม่แนะนำหากจะนำขึ้น GitHub)
-    os.environ["GOOGLE_API_KEY"] = "ใส่_API_KEY_ของคุณที่นี่"
+    os.environ["GOOGLE_API_KEY"] = "AIzaSyC3eJ3T7uoz9NG_FAaM-NYJt--74Q1MhNI"
 
 # 3. ฟังก์ชันเตรียมระบบฐานข้อมูล (RAG Initialization)
 @st.cache_resource(show_spinner="กำลังวิเคราะห์เอกสารประกาศ...")

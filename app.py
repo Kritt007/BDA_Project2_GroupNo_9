@@ -1,3 +1,4 @@
+%%writefile app.py
 import streamlit as st
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
@@ -22,7 +23,7 @@ st.markdown("Ask me anything about the information of Innovation fund!")
 # ---------------------------------------------------------
 @st.cache_resource(show_spinner="กำลังโหลด AI Model และข้อมูล... (อาจใช้เวลาหลายนาที)")
 def setup_rag_system():
-    file_path = "extracted_ocr_data.txt"
+    file_path = "/content/extracted_ocr_data.txt"
     
     if not os.path.exists(file_path):
         st.error(f"ไม่พบไฟล์ข้อมูล '{file_path}' กรุณาอัปโหลดไฟล์นี้ไว้ในโฟลเดอร์เดียวกับ app.py")

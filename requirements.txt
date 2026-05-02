@@ -1,0 +1,10 @@
+streamlit
+langchain
+langchain-community<0.3.28
+langchain-huggingface
+faiss-cpu
+sentence-transformers
+transformers
+accelerate
+bitsandbytes
+torch

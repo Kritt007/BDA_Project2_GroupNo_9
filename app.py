@@ -48,7 +48,7 @@ def initialize_rag_system():
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     
     # ตั้งค่าตัวโมเดล AI (Gemini 1.5 Flash - เร็วและแม่นยำ)
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.2)
     
     # กำหนดคำสั่ง (Prompt) ให้ AI สวมบทบาทเป็นเจ้าหน้าที่กองบริหารงานวิจัย
     system_prompt = (

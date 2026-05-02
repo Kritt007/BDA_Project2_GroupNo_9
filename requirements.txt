@@ -1,7 +1,7 @@
 streamlit
 langchain
 langchain-core
-langchain-community
+langchain-community<0.3.28
 langchain-text-splitters
 langchain-google-genai
 langchain-huggingface

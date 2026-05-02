@@ -1,117 +1,115 @@
-
 import streamlit as st
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import os
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
-import os
+from langchain_core.prompts import ChatPromptTemplate
 
-# ---------------------------------------------------------
-# ตั้งค่าหน้าเว็บ
-# ---------------------------------------------------------
-st.set_page_config(page_title="MLii Innovation Fund", page_icon="💡")
-st.title("MLii Innovation Fund 💡")
-st.markdown("Ask me anything about the information of Innovation fund!")
+# 1. ตั้งค่าหน้าเว็บ (UI Configuration)
+st.set_page_config(
+    page_title="MFU Research Grant Assistant", 
+    page_icon="🎓",
+    layout="wide"
+)
 
-# ---------------------------------------------------------
-# โหลด Model และข้อมูล (ใช้ Cache เพื่อไม่ให้โหลดใหม่ทุกครั้ง)
-# ---------------------------------------------------------
-@st.cache_resource(show_spinner="กำลังโหลด AI Model และข้อมูล... (อาจใช้เวลาหลายนาที)")
-def setup_rag_system():
-    file_path = "/content/extracted_ocr_data.txt"
+st.title("🎓 ผู้ช่วยตอบคำถามทุนวิจัยพัฒนาการเรียนรู้ (มฟล.)")
+st.markdown("ระบบนี้ใช้ AI ช่วยค้นหาคำตอบจากประกาศมหาวิทยาลัยแม่ฟ้าหลวง เรื่อง หลักเกณฑ์การขอรับสนับสนุนทุนวิจัยฯ")
+
+# 2. การจัดการ API Key
+# แนะนำให้ตั้งค่าใน Streamlit Secrets หรือ Environment Variable เพื่อความปลอดภัย
+if "GOOGLE_API_KEY" not in st.session_state:
+    # คุณสามารถใส่ Key ตรงๆ ได้ที่นี่เพื่อทดสอบ (แต่ไม่แนะนำหากจะนำขึ้น GitHub)
+    os.environ["GOOGLE_API_KEY"] = "ใส่_API_KEY_ของคุณที่นี่"
+
+# 3. ฟังก์ชันเตรียมระบบฐานข้อมูล (RAG Initialization)
+@st.cache_resource(show_spinner="กำลังวิเคราะห์เอกสารประกาศ...")
+def initialize_rag_system():
+    file_path = "extracted_ocr_data.txt"
     
     if not os.path.exists(file_path):
-        st.error(f"ไม่พบไฟล์ข้อมูล '{file_path}' กรุณาอัปโหลดไฟล์นี้ไว้ในโฟลเดอร์เดียวกับ app.py")
-        return None
+        st.error(f"ไม่พบไฟล์ '{file_path}' กรุณาตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์เดียวกันกับโค้ด")
+        st.stop()
 
-    # 1. Load and Split
+    # โหลดเอกสาร [cite: 1]
     loader = TextLoader(file_path, encoding="utf-8")
     docs = loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    
+    # หั่นข้อความให้เล็กลงเพื่อให้ AI ค้นหาได้แม่นยำขึ้น
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
     splits = text_splitter.split_documents(docs)
-
-    # 2. Vector Store
-    embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-        model_kwargs={'device': 'cuda' if torch.cuda.is_available() else 'cpu'}
-    )
+    
+    # สร้าง Vector Store สำหรับการค้นหา (Embedding ภาษาไทย-อังกฤษ)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
     vectorstore = FAISS.from_documents(splits, embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-
-    # 3. LLM (OpenThaiGPT 7B)
-    model_id = "openthaigpt/openthaigpt-1.0.0-7b-chat"
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        torch_dtype=torch.bfloat16,
-        device_map="auto"
-    )
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_new_tokens=256,
-        temperature=0.3,
-        top_p=0.9,
-        repetition_penalty=1.15
-    )
-    llm = HuggingFacePipeline(pipeline=pipe)
-
-    # 4. Prompt & Chain
+    
+    # ตั้งค่าตัวโมเดล AI (Gemini 1.5 Flash - เร็วและแม่นยำ)
+    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+    
+    # กำหนดคำสั่ง (Prompt) ให้ AI สวมบทบาทเป็นเจ้าหน้าที่กองบริหารงานวิจัย
     system_prompt = (
-        "You are a knowledgeable and helpful assistant specialized in MFU Research Grants. "
-        "Use the following pieces of retrieved context to answer the user's question about the grant rules and conditions. "
-        "If you don't know the answer based on the context, just say that you don't know. "
-        "Keep your answers concise, accurate, and helpful in Thai.\n\n"
-        "Context: {context}"
+        "คุณคือเจ้าหน้าที่ผู้เชี่ยวชาญด้านกฎระเบียบทุนวิจัยเพื่อพัฒนาการเรียนรู้ มหาวิทยาลัยแม่ฟ้าหลวง "
+        "จงตอบคำถามโดยใช้ข้อมูลจากเนื้อหา (Context) ที่ให้มาเท่านั้น "
+        "หากในเนื้อหาไม่มีคำตอบ ให้บอกว่า 'ขออภัยครับ ข้อมูลส่วนนี้ไม่มีระบุในประกาศ' "
+        "ตอบคำถามด้วยภาษาไทยที่สุภาพ เป็นกันเองแต่เป็นทางการ\n\n"
+        "เนื้อหาประกอบการพิจารณา: {context}"
     )
+    
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
         ("human", "{input}"),
     ])
-    question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    return create_retrieval_chain(retriever, question_answer_chain)
+    
+    # สร้าง Chain สำหรับการตอบคำถาม
+    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+    return create_retrieval_chain(retriever, combine_docs_chain)
 
-# โหลดระบบ RAG
-rag_chain = setup_rag_system()
+# เรียกใช้ระบบ
+try:
+    rag_chain = initialize_rag_system()
+except Exception as e:
+    st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
+    st.stop()
 
-# ---------------------------------------------------------
-# สร้าง UI สำหรับแชท
-# ---------------------------------------------------------
-if rag_chain:
-    # เก็บประวัติการแชท
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# 4. ส่วนแสดงผลการแชท (Chat UI)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # ตัวอย่างคำถาม
-    with st.expander("📝 ดูตัวอย่างคำถาม"):
-        st.write("- อาจารย์จะตั้งงบวิจัยอย่างไร?")
-        st.write("- ผู้วิจัยจะได้รับเงินเมื่อไหร่?")
-        st.write("- ผู้วิจัยสามารถเบิกค่าตอบแทนได้หรือไม่?")
+# แสดงประวัติการสนทนา
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # แสดงประวัติแชทเก่า
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# ช่องรับคำถามจากผู้ใช้
+if user_query := st.chat_input("พิมพ์คำถามของคุณที่นี่ เช่น 'ทุนนี้ให้งบเท่าไหร่?' หรือ 'ใครขอทุนได้บ้าง?'"):
+    # บันทึกและแสดงคำถามของผู้ใช้
+    st.session_state.messages.append({"role": "user", "content": user_query})
+    with st.chat_message("user"):
+        st.markdown(user_query)
 
-    # รับข้อความใหม่
-    if user_query := st.chat_input("พิมพ์คำถามของคุณที่นี่..."):
-        # แสดงข้อความผู้ใช้
-        st.session_state.messages.append({"role": "user", "content": user_query})
-        with st.chat_message("user"):
-            st.markdown(user_query)
-
-        # หาคำตอบ
-        with st.chat_message("assistant"):
-            with st.spinner("กำลังค้นหาคำตอบ..."):
+    # ให้ AI ประมวลผลคำตอบ
+    with st.chat_message("assistant"):
+        with st.spinner("กำลังค้นหาข้อมูลจากประกาศ..."):
+            try:
                 response = rag_chain.invoke({"input": user_query})
-                answer = response["answer"]
-                st.markdown(answer)
-        
-        # บันทึกคำตอบ
-        st.session_state.messages.append({"role": "assistant", "content": answer})
+                full_response = response["answer"]
+                st.markdown(full_response)
+                # บันทึกคำตอบของ AI
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
+            except Exception as e:
+                st.error(f"ไม่สามารถตอบคำถามได้ในขณะนี้: {e}")
+
+# 5. แถบด้านข้างสำหรับข้อมูลสรุป (Sidebar Information)
+with st.sidebar:
+    st.header("📌 สรุปเงื่อนไขสำคัญ")
+    st.write("- **วงเงินทุน:** ไม่เกิน 50,000 บาทต่อโครงการ [cite: 7, 8]")
+    st.write("- **ระยะเวลาดำเนินการ:** ไม่เกิน 12 เดือน [cite: 6]")
+    st.write("- **การจ่ายเงิน:** แบ่งจ่าย 3 งวด (50% / 30% / 20%) ")
+    st.divider()
+    if st.button("🗑️ ล้างประวัติการสนทนา"):
+        st.session_state.messages = []
+        st.rerun()
